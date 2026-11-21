@@ -1,0 +1,10 @@
+# Training / evaluation (Colab & Kaggle already have torch + torchvision installed)
+torch>=1.12
+torchvision>=0.13
+numpy
+pillow
+matplotlib
+# Deployment app
+streamlit>=1.28
+# Tests (optional)
+pytest
