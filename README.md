@@ -4,9 +4,21 @@ CSE-602 Machine Learning project (Fall 2026) — Abiha Jawaid (36395), Bismah Im
 
 Paper: S. Sun, W. Ren, J. Li, R. Wang, X. Cao, *Logit Standardization in Knowledge Distillation*, CVPR 2024.
 
-**Links (fill in before 25 Nov 23:55):**
-- Code: `<GitHub URL>`
-- Trained weights: `<Google Drive / Hugging Face URL>` (public, no permission request needed)
+**Links:**
+- Code: https://github.com/Abiha2004/lskd
+- Trained student weights: [`checkpoints/`](checkpoints) in this repository (`student_kd.pth`, `student_kd_ls.pth`, 1.1 MB each). The teacher is downloaded with `python scripts/download_teacher.py`.
+- All training logs: [`runs/`](runs) (`history.csv` per epoch, `summary.json` per run)
+
+## Results (CIFAR-100, ResNet-56 → ResNet-20, top-1 %, final epoch, 1 seed)
+
+| | Paper (mean of 4) | Ours |
+|---|---|---|
+| Teacher ResNet-56 | 72.34 | 72.44 |
+| Student alone (CE) | 69.06 | 69.70 |
+| Vanilla KD (T=4, λ_KD=0.9) | 70.66 | 70.92 |
+| KD + LS (τ=2, λ_KD=9) | 71.43 | 70.95 |
+
+Ablation at temperature 2: raw logits 71.43 (λ_KD=0.9) / 70.56 (λ_KD=9); Z-scored logits 69.79 (λ_KD=0.9) / 70.95 (λ_KD=9). See the report for the analysis.
 
 ## What this repository does
 
@@ -97,12 +109,12 @@ python scripts/make_report_assets.py                   # -> report/generated/*.t
 
 ## Trained models
 
-Place the files in `checkpoints/` (download link above):
+The two student files are already in `checkpoints/`; the teacher is fetched by `scripts/download_teacher.py`:
 
 | file | model | test top-1 |
 |---|---|---|
-| `checkpoints/student_kd.pth` | ResNet-20, vanilla KD (copy of `runs/c100_kd/final.pth`) | see report |
-| `checkpoints/student_kd_ls.pth` | ResNet-20, KD + LS (copy of `runs/c100_kd_ls/final.pth`) | see report |
+| `checkpoints/student_kd.pth` | ResNet-20, vanilla KD (copy of `runs/c100_kd/final.pth`) | 70.92% |
+| `checkpoints/student_kd_ls.pth` | ResNet-20, KD + LS (copy of `runs/c100_kd_ls/final.pth`) | 70.95% |
 | `checkpoints/teachers/resnet56_cifar100.pth` | ResNet-56 teacher (official) | 72.34% |
 
 Each of our checkpoints stores its architecture, dataset, method, normalization constants, class names and test accuracy, so inference needs nothing else.

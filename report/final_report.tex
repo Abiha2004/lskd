@@ -103,15 +103,15 @@
 
     \fbox{\parbox{0.85\textwidth}{\centering
     \textbf{Project artifacts (public, view/download without permission)}\\[4pt]
-    Source code: \TODO{GitHub URL}\\
-    Trained model weights: \TODO{Google Drive / Hugging Face URL}\\
+    Source code: \url{https://github.com/Abiha2004/lskd}\\
+    Trained model weights: \url{https://github.com/Abiha2004/lskd/tree/main/checkpoints}\\
     Web app: run locally with \texttt{streamlit run app.py} (Section~\ref{sec:deploy})}}
     \vfill
     {\large Submitted: 25 November 2026\par}
 \end{titlepage}
 
 \begin{abstract}
-Knowledge distillation (KD) trains a small \emph{student} network to imitate the softened class probabilities of a large \emph{teacher}. Sun et al.\ (CVPR 2024) argue that the usual practice of using one shared softmax temperature for teacher and student silently forces the student to reproduce the teacher's logit \emph{scale} (range and variance), even though only the \emph{relations} between class scores are needed. They propose a parameter-free Z-score \emph{logit standardization} (LS) of both logit vectors before the softmax. We re-implemented vanilla KD and KD+LS in PyTorch, distilled a pretrained ResNet-56 teacher into a ResNet-20 student on CIFAR-100, and compared against the paper's reported numbers (KD $70.66\%$, KD+LS $71.43\%$). Our runs give \KDacc\% and \LSacc\% respectively (a gain of \LSgain\ percentage points). Beyond reproduction, we ran (A) a $2\times2$ ablation separating the effect of the Z-score from the ten-times-larger distillation weight that LS uses, and (B) a dataset-variation study on CIFAR-10. Finally, we deployed both students in a Streamlit web application that shows the full inference pipeline and visualises raw versus standardized logits for any uploaded image.
+Knowledge distillation (KD) trains a small \emph{student} network to imitate the softened class probabilities of a large \emph{teacher}. Sun et al.\ (CVPR 2024) argue that the usual practice of using one shared softmax temperature for teacher and student silently forces the student to reproduce the teacher's logit \emph{scale} (range and variance), even though only the \emph{relations} between class scores are needed. They propose a parameter-free Z-score \emph{logit standardization} (LS) of both logit vectors before the softmax. We re-implemented vanilla KD and KD+LS in PyTorch, distilled a pretrained ResNet-56 teacher into a ResNet-20 student on CIFAR-100, and compared against the paper's reported numbers (KD $70.66\%$, KD+LS $71.43\%$). Our single-seed runs reproduce the teacher (72.44\%) and vanilla KD (\KDacc\%) closely, but KD+LS reaches \LSacc\%, so we do \emph{not} reproduce the paper's +0.77 point gain for this pair (ours: +\LSgain). Our diagnostics nevertheless confirm the mechanism the paper describes: the vanilla-KD student copies the teacher's logit spread almost exactly (mean per-image logit std \KDlogitstd\ vs.\ \Tlogitstd), whereas the LS student uses a much smaller scale (\LSlogitstd) while matching the teacher's class \emph{ranking} better. A $2\times2$ ablation shows that standardization and the ten-times-larger distillation weight interact as the paper predicts (the large weight hurts raw-logit KD by 0.87 points but helps LS by 1.16), yet the best vanilla KD configuration ($T{=}2$, 71.43\%) is the strongest student overall. We argue that for this small-gap, same-family pair the vanilla student is able to match the teacher's logit scale, so the constraint LS removes is not a bottleneck. We also ran a dataset-variation study on CIFAR-10. Finally, we deployed both students in a Streamlit web application that shows the full inference pipeline and visualises raw versus standardized logits for any uploaded image.
 \end{abstract}
 
 \tableofcontents
@@ -298,7 +298,7 @@ Seed & 0 (one run per configuration) \\
 \end{table}
 
 \subsection{Environment and dependencies}
-Training: \TODO{Google Colab / Kaggle}, NVIDIA \TODO{T4/P100} GPU, Python \TODO{3.x}, PyTorch \TODO{2.x} (versions are stored in each run's \texttt{summary.json}). Deployment: a CPU laptop, Python 3.9, PyTorch, torchvision, NumPy, Pillow, Matplotlib, Streamlit (\texttt{requirements.txt}).
+Training: Kaggle notebooks with two NVIDIA Tesla T4 GPUs (16 GB), one training run per GPU, PyTorch 2.11 with CUDA 13 (versions are stored in each run's \texttt{summary.json}). One distillation run took about 67 minutes (17 s per epoch); training the student alone took 40 minutes. Deployment: a CPU laptop, Python 3.9, PyTorch, torchvision, NumPy, Pillow, Matplotlib, Streamlit (\texttt{requirements.txt}).
 
 \subsection{Code structure}
 \begin{itemize}[nosep]
@@ -343,11 +343,11 @@ We did not clone and run the official repository; it was used only as a referenc
 \item \textbf{GPU-side augmentation}: the same crop+flip recipe, executed on the GPU instead of CPU workers.
 \item \textbf{Reported metric}: we report the \emph{final-epoch} test accuracy, which does not use the test set for model selection; the mdistiller code family logs the \emph{best} test accuracy over epochs, so we also list best-epoch accuracy for a like-for-like comparison.
 \item \textbf{Standard deviation}: as in the official code, $\sigma$ uses the unbiased estimator ($1/(K{-}1)$); the paper's Algorithm~1 writes $1/K$. The two differ by a constant factor $\sqrt{K/(K-1)}$ (1.005 for $K{=}100$), which is equivalent to a 0.5\% change of $\tau$. (The paper's own Fig.~2 values also correspond to the unbiased version.)
-\item \TODO{If you trained with fewer than 240 epochs, state it here; it must be the same for all compared runs.}
+\item \textbf{Full schedule}: every run uses the paper's full 240 epochs; no data or epochs were removed.
 \end{itemize}
 
 \subsection{Verification of the implementation}
-Before training, we checked the implementation with unit tests (\texttt{tests/test\_core.py}): standardized logits have zero mean, unit standard deviation and unchanged class ranking; the LS loss is zero for any student $\mathbf{z}=a\mathbf{v}+b$ ($a>0$) while vanilla KD is not; mean-subtraction alone leaves the KD loss unchanged; network output shapes and parameter counts match Table~\ref{tab:arch}; and the toy example of Table~\ref{tab:toy} matches the paper to four decimals. The loaded teacher reaches \TODO{72.3x}\% on the CIFAR-100 test set with our evaluation code, confirming that weights and preprocessing are consistent with the original.
+Before training, we checked the implementation with unit tests (\texttt{tests/test\_core.py}): standardized logits have zero mean, unit standard deviation and unchanged class ranking; the LS loss is zero for any student $\mathbf{z}=a\mathbf{v}+b$ ($a>0$) while vanilla KD is not; mean-subtraction alone leaves the KD loss unchanged; network output shapes and parameter counts match Table~\ref{tab:arch}; and the toy example of Table~\ref{tab:toy} matches the paper to four decimals. The loaded teacher reaches 72.44\% (72.41\% in full fp32 evaluation) on the CIFAR-100 test set, versus 72.34\% reported, with our evaluation code, confirming that weights and preprocessing are consistent with the original.
 
 % ============================================================
 \section{Dataset and Preprocessing / EDA}
@@ -435,7 +435,9 @@ Model & Top-1 & Top-5 & ECE & Logit std & Agree & $\rho$ & KL raw & KL Z \\
 
 \maybefig{figures/logit_stats.pdf}{Distribution over test images of the logit standard deviation (left) and of the gap between the top logit and the mean (right) for the teacher and both students.}{fig:logits}
 
-\TODO{2--4 sentences describing the reproduction result: KD vs paper, KD+LS vs paper, whether the sign and size of the gain match. Example: ``Our vanilla KD student reaches \KDacc\%, X pp from the paper; KD+LS reaches \LSacc\%, so LS improves KD by \LSgain\ pp versus 0.77 pp in the paper.''}
+\textbf{Summary.} The teacher (72.44\%), the student trained alone (\CEacc\%) and vanilla KD (\KDacc\%) are all within 0.7 points of the paper and in the same order: distillation improves the student by 1.2 points. KD+LS, however, reaches \LSacc\%, only \LSgain\ points above vanilla KD, versus +0.77 in the paper; the gain is also absent with best-epoch accuracy (+0.04) and with the mean of the last ten epochs (70.88\% vs.\ 70.84\%). Thus the \emph{baseline} results reproduce, but the improvement from logit standardization does \emph{not} reproduce for this pair in our single-seed runs. The training curves (Fig.~\ref{fig:curves}) show one consistent difference: during the high-learning-rate phase (epochs 50--150) the KD+LS student is on average 1.3 points more accurate than the KD student (55.5\% vs.\ 54.2\%), but the gap closes after the learning-rate decays. KD+LS also ends with a higher training cross-entropy, as expected because it puts only 10\% of the weight on hard labels and produces low-magnitude logits.
+
+Table~\ref{tab:diag} is computed by \texttt{evaluate.py} in full fp32 precision; its top-1 values differ from Table~\ref{tab:repro} (measured with mixed precision during training) by at most 0.05 points.
 
 % ============================================================
 \section{Additional Experiments}
@@ -447,7 +449,7 @@ Model & Top-1 & Top-5 & ECE & Logit std & Agree & $\rho$ & KL raw & KL Z \\
 
 \textbf{Hypothesis.} Following the paper's argument, raising $\lambda_{KD}$ should \emph{hurt} vanilla KD (the student is pushed harder to copy a logit scale it cannot reach) but \emph{help} LS (the student is pushed harder to copy only relations). If true, the two factors interact: neither the Z-score at a small weight nor a large weight without the Z-score should give the full gain.
 
-\textbf{Setup.} A $2\times2$ factorial design on the reproduction pair (ResNet-56$\rightarrow$ResNet-20, CIFAR-100): \{raw logits, Z-scored logits\} $\times$ \{$\lambda_{KD}=0.9$, $\lambda_{KD}=9$\}. To isolate these two factors, all four runs use the same temperature $T=\tau=2$ (as in the paper's Table~4) and $\lambda_{CE}=0.1$; everything else follows Table~\ref{tab:hparams}. This experiment is not a feasibility adjustment: the reproduction runs use the paper's full settings, and these runs add new configurations. It differs from the paper's ablation in using a different, smaller teacher--student pair, with a 10$\times$ smaller capacity gap in absolute terms than ResNet32$\times$4$\rightarrow$ResNet8$\times$4.
+\textbf{Setup.} A $2\times2$ factorial design on the reproduction pair (ResNet-56$\rightarrow$ResNet-20, CIFAR-100): \{raw logits, Z-scored logits\} $\times$ \{$\lambda_{KD}=0.9$, $\lambda_{KD}=9$\}. To isolate these two factors, all four runs use the same temperature $T=\tau=2$ (as in the paper's Table~4) and $\lambda_{CE}=0.1$; everything else follows Table~\ref{tab:hparams}. This experiment is not a feasibility adjustment: the reproduction runs use the paper's full settings, and these runs add new configurations. It differs from the paper's ablation in using a different, smaller teacher--student pair, with a smaller capacity gap than the paper's ResNet32$\times$4$\rightarrow$ResNet8$\times$4 (3.3 vs.\ 6.9 points between the teacher and the student trained alone).
 
 \begin{table}[H]
 \centering
@@ -464,7 +466,9 @@ Model & Top-1 & Top-5 & ECE & Logit std & Agree & $\rho$ & KL raw & KL Z \\
 
 \maybefig[0.6]{figures/ablation.pdf}{Experiment A: effect of standardization and KD weight.}{fig:ablation}
 
-\textbf{Result.} \TODO{Describe which cell is best, whether raw KD dropped at $\lambda_{KD}=9$, whether LS at 0.9 already beats raw at 0.9. Answer the question in one sentence.}
+\textbf{Result.} The two factors interact exactly in the direction the paper predicts. Increasing $\lambda_{KD}$ from 0.9 to 9 \emph{lowers} raw-logit KD by 0.87 points (71.43\%$\rightarrow$70.56\%) but \emph{raises} Z-scored KD by 1.16 points (69.79\%$\rightarrow$70.95\%). At the small weight, standardization is harmful ($-1.64$): the LS student at $\lambda_{KD}=0.9$ (69.79\%) is no better than the student trained without a teacher (\CEacc\%), i.e.\ the distillation signal is almost lost. At the large weight, standardization helps ($+0.39$). However, the best cell overall is plain KD with raw logits at $T=2$, $\lambda_{KD}=0.9$ (71.43\%), which also beats our $T=4$ vanilla KD baseline by half a point.
+
+\textbf{Answer to the research question.} The Z-score alone does not improve distillation; it only works together with a large KD weight, so the two parts of the LS recipe cannot be separated. For ResNet-56$\rightarrow$ResNet-20 the combination is still not better than a well-chosen vanilla KD temperature. Differences of a few tenths of a point are within the run-to-run noise of single runs (Section~\ref{sec:disc}).
 
 \subsection{Experiment B -- Dataset variation: does LS still help with only 10 classes?}
 \textbf{Research question.} Does the benefit of logit standardization persist on CIFAR-10, where each image has only $K=10$ logits?
@@ -486,10 +490,10 @@ Model & Top-1 & Top-5 & ECE & Logit std & Agree & $\rho$ & KL raw & KL Z \\
 \end{tabular}
 \end{table}
 
-\textbf{Result.} \TODO{State the CIFAR-10 gain (\CTENgain\ pp) vs the CIFAR-100 gain (\LSgain\ pp), and whether the hypothesis was supported.}
+\textbf{Result.} \TODO{Phase 2 runs pending: CIFAR-10 gain (\CTENgain\ pp) vs CIFAR-100 gain (\LSgain\ pp).}
 
 \subsection{Experiment C (optional) -- Base temperature $\tau$}
-\TODO{Keep this subsection only if the $\tau=1$ and $\tau=4$ runs were completed; otherwise delete it.}
+\TODO{Phase 2 runs pending.}
 
 \begin{table}[H]
 \centering
@@ -508,17 +512,35 @@ Base temperature & Final top-1 & Best top-1 \\
 \section{Analysis and Discussion}
 % ============================================================
 
+\label{sec:disc}
 \subsection{Reproduction gap}
-\TODO{Keep the explanations that apply to your numbers; delete the others.} Possible sources of the difference between our numbers and the paper's are: (i) \emph{seed variance} --- we use one run while the paper averages four, and single CIFAR-100 runs of the same configuration typically differ by a few tenths of a percentage point, which is the same order as the effect being measured; (ii) \emph{final vs best epoch} --- the paper's code base records the best test accuracy over 240 epochs, which is optimistically biased (Table~\ref{tab:repro} shows both); (iii) \emph{numerical details} --- mixed precision and GPU-side augmentation change floating-point and random-number streams but not the method; (iv) \emph{hardware/library versions}.
+Our baselines are close to the paper: teacher $+0.10$, student alone $+0.64$, vanilla KD $+0.26$ points. The KD+LS result is $0.48$ points below the paper, so the gain of LS shrinks from 0.77 to 0.03 points. We verified that this is not a configuration error: our settings ($\tau=2$, $\lambda_{KD}=9$, $\lambda_{CE}=0.1$) are the ones in the name of the official log for this exact pair (\texttt{kd,resnet56,resnet20,2,9}) \cite{sun2024code}, and our loss is unit-tested against the method's defining properties. We see four contributing explanations.
+\begin{enumerate}[nosep]
+\item \textbf{Seed variance.} We ran one seed; the paper averages four. Within one run, the test accuracy of the last ten epochs fluctuates with a standard deviation of 0.11--0.17 points, and differences between independent runs of the same configuration on CIFAR-100 are typically larger, a few tenths of a point. A 0.77-point gain measured as a mean of four runs can plausibly appear as roughly 0--1 points in a single pair of runs. With one seed we can say that we did \emph{not} observe a gain, not that there is none.
+\item \textbf{A stronger baseline.} Our student trained alone and our KD student are both above the paper's numbers (+0.64, +0.26), which leaves less room for improvement.
+\item \textbf{The constraint is not binding for this pair} (Section~\ref{sec:scale}): the vanilla-KD student already matches the teacher's logit spread, so removing the obligation to match it gives little benefit. This agrees with the paper's own tables, where ResNet-56$\rightarrow$ResNet-20 has one of the smallest gains (0.77) and large gains (3.1--3.3 points) occur for pairs with a large capacity gap or different architectures.
+\item \textbf{Implementation details} (mixed precision, GPU-side augmentation, library versions) change random-number streams and rounding, but they affect both methods equally and do not change the method.
+\end{enumerate}
 
 \subsection{What the ablation tells us}
-\TODO{Interpret Table~\ref{tab:ablation}. Key points to address: (1) If raw KD gets worse at $\lambda_{KD}=9$ while LS gets better, this supports the paper's ``shackle'' explanation: a strong pull towards the teacher's raw logits is harmful because the student cannot match the scale, whereas a strong pull towards the standardized logits is useful. (2) If LS at $\lambda_{KD}=0.9$ is no better than raw KD at 0.9, then standardization alone is not enough---part of the method's benefit is that it \emph{enables} the large KD weight. (3) Mention that the paper's Table~4 shows the same pattern for a larger pair.}
+The ablation supports the paper's explanation qualitatively. A strong pull towards the teacher's \emph{raw} logits ($\lambda_{KD}=9$) hurts, consistent with the claim that forcing the student to copy the teacher's logit scale is a burden; a strong pull towards the \emph{standardized} logits helps. The paper's Table~4 shows the same pattern for ResNet32$\times$4$\rightarrow$ResNet8$\times$4, where it is much stronger (vanilla KD drops sharply above $\lambda_{KD}=9$).
+
+The ablation also shows why LS \emph{needs} a large weight. After Z-scoring and dividing by $\tau=2$, both logit vectors have a standard deviation of only 0.5, so the softened distributions are very flat and the KL term and its gradients are small; at $\lambda_{KD}=0.9$ the student effectively trains on cross-entropy with weight 0.1 plus a weak teacher signal, which explains why it ends at the level of the student trained alone. The paper mentions this gradient compensation as one reason for its large KD weight. The practical lesson is that LS is a package: standardization plus a re-tuned weight, and comparing it with vanilla KD at the vanilla weight (or vice versa) is not a fair test. Finally, the strong result of vanilla KD at $T=2$ shows that the vanilla baseline is sensitive to its temperature; the paper's comparison fixes vanilla KD at $T=4$.
 
 \subsection{Evidence about logit scale}
-\TODO{Use Table~\ref{tab:diag} and Fig.~\ref{fig:logits}: compare the logit std of the teacher (\Tlogitstd), the KD student (\KDlogitstd) and the LS student (\LSlogitstd). The paper predicts that the KD student's std is pulled towards the teacher's, while the LS student is free to use a different scale but has higher rank correlation $\rho$ / lower KL after Z-score. Say whether you see this. Also comment on calibration (ECE): the raw-logit scale of the LS student determines how confident its softmax probabilities are.}
+\label{sec:scale}
+Although accuracy did not change, the two students are very different internally, exactly as the paper describes (Table~\ref{tab:diag}, Fig.~\ref{fig:logits}).
+\begin{itemize}[nosep]
+\item \textbf{Variance match under vanilla KD.} The KD student's per-image logit standard deviation (\KDlogitstd) is almost identical to the teacher's (\Tlogitstd), and its histogram in Fig.~\ref{fig:logits} lies on top of the teacher's; the average largest logit is also the same (15.1 vs.\ 15.3). This is the ``variance match'' shackle of Eq.~\eqref{eq:shackles}.
+\item \textbf{Free scale under LS.} The LS student's logits have a standard deviation of only \LSlogitstd\ and a largest logit of 6.5. Measured with raw logits, it is therefore much further from the teacher (KL 0.465 vs.\ 0.140).
+\item \textbf{Better relations under LS.} After standardization the LS student is \emph{closer} to the teacher (KL 0.028 vs.\ 0.033), ranks the 100 classes more like the teacher (Spearman $\rho=0.870$ vs.\ 0.846), agrees with the teacher's prediction slightly more often (74.9\% vs.\ 74.6\%) and has higher top-5 accuracy (92.69\% vs.\ 92.31\%). This mirrors the paper's Fig.~3 and our toy example: a raw-logit KL would call the LS student the worse imitator, a scale-free measure calls it the better one.
+\end{itemize}
+Why did better relations not give better top-1 accuracy? The key observation is the first bullet: this ResNet-20 student was \emph{able} to reproduce the teacher's logit scale, so the constraint was satisfied at little cost. The paper motivates LS with students that \emph{cannot} reach a large teacher's logit range (7.5 vs.\ 12 in its Fig.~3); ResNet-56 and ResNet-20 belong to the same family and differ by only 3 points of accuracy, so this capacity gap is small. The two students make different mistakes---they disagree on 22\% of test images---but each is right on almost exactly as many of those images as the other (666 vs.\ 667), so the net accuracy is the same.
+
+\textbf{Calibration side effect.} Because the LS student's raw logits are small, its softmax probabilities are low: average confidence 53.4\% at 71.0\% accuracy, i.e.\ strongly \emph{under}-confident (ECE 17.6). The vanilla-KD student is over-confident (82.9\% confidence, ECE 11.9), like the teacher (85.0\%, ECE 12.6). In the deployed app this means the LS student's displayed probabilities should not be read as calibrated confidences; temperature scaling on a validation set would fix this without changing predictions.
 
 \subsection{Does it generalise to fewer classes?}
-\TODO{Interpret Table~\ref{tab:c10}.}
+\TODO{Phase 2 runs pending.}
 
 \subsection{Interpreting training losses}
 The distillation losses of KD and KD+LS are not comparable in value: they are computed on differently scaled inputs, with different temperatures and weights. Our toy example (Table~\ref{tab:toy}) shows that even for a fixed teacher a lower vanilla KL does not imply a better student, which is why we compare students by test accuracy and by scale-free diagnostics.
@@ -571,7 +593,9 @@ $ python infer.py --ckpt checkpoints/student_kd.pth checkpoints/student_kd_ls.pt
 \section{Limitations}
 % ============================================================
 \begin{itemize}[nosep]
-\item \textbf{Statistical power:} one seed per configuration; effects of a few tenths of a point cannot be separated from noise with certainty. The paper averages four runs.
+\item \textbf{Statistical power:} one seed per configuration; effects of a few tenths of a point cannot be separated from noise with certainty. The paper averages four runs, and our main negative result (no LS gain) should be confirmed with more seeds.
+\item \textbf{No hyper-parameter search:} we used the paper's settings for both methods; the ablation shows vanilla KD is sensitive to $T$, so a fully fair comparison would tune both methods on a validation split.
+\item \textbf{Calibration:} the LS student is strongly under-confident; we did not apply post-hoc calibration.
 \item \textbf{Scope:} one teacher--student pair on CIFAR-100 (plus CIFAR-10); we did not test ImageNet, different architectures (e.g.\ ResNet32$\times$4$\rightarrow$ShuffleNet), or LS combined with DKD/CTKD/MLKD.
 \item \textbf{Self-trained CIFAR-10 teacher:} Experiment B uses a teacher we trained, so its quality may differ from a well-tuned public teacher.
 \item \textbf{Test set used for monitoring:} no separate validation split was held out; we mitigate this by reporting final-epoch accuracy and not tuning any hyper-parameter on the test set.
@@ -582,7 +606,7 @@ $ python infer.py --ckpt checkpoints/student_kd.pth checkpoints/student_kd_ls.pt
 % ============================================================
 \section{Conclusion}
 % ============================================================
-We studied the claim that sharing one temperature between teacher and student in knowledge distillation forces the student to match the teacher's logit magnitude and variance, and that a per-sample Z-score standardization of both logit vectors removes this constraint. We explained the method and its entropy-maximisation motivation in our own words, verified its mathematical properties and the paper's toy example with our own code, and re-implemented and trained vanilla KD and KD+LS for ResNet-56$\rightarrow$ResNet-20 on CIFAR-100, obtaining \KDacc\% and \LSacc\% versus the paper's 70.66\% and 71.43\%. \TODO{One sentence on Experiment A's answer and one on Experiment B's answer.} Finally, we packaged both students in a web application that shows every step from input image to prediction and visualises the difference between raw and standardized logits. Overall, logit standardization is a one-line, parameter-free change that \TODO{did / did not} measurably help in our setting.
+We studied the claim that sharing one temperature between teacher and student in knowledge distillation forces the student to match the teacher's logit magnitude and variance, and that a per-sample Z-score standardization of both logit vectors removes this constraint. We explained the method and its entropy-maximisation motivation in our own words, verified its mathematical properties and the paper's toy example with our own code, and re-implemented and trained vanilla KD and KD+LS for ResNet-56$\rightarrow$ResNet-20 on CIFAR-100, obtaining \KDacc\% and \LSacc\% versus the paper's 70.66\% and 71.43\%: the baselines reproduce, but the gain from standardization does not appear in our single-seed runs for this pair. Our diagnostics do reproduce the mechanism: vanilla KD makes the student copy the teacher's logit spread, while LS lets the student keep a much smaller scale and copy the teacher's class ranking more faithfully. Our ablation shows that standardization only helps together with a large distillation weight, and that a vanilla KD student with a lower temperature is as good or better on this pair. \TODO{One sentence on Experiment B (CIFAR-10).} Finally, we packaged both students in a web application that shows every step from input image to prediction and visualises the difference between raw and standardized logits. Overall, logit standardization is a cheap, parameter-free change that clearly alters \emph{what} the student learns, but in our small-gap setting it did not measurably improve accuracy; its benefit is likely to depend on the capacity gap between teacher and student.
 
 % ============================================================
 \begin{thebibliography}{99}
@@ -638,6 +662,6 @@ Run & Method & $T/\tau$ & $\lambda_{KD}$ & Epochs & Final & Best & Minutes \\
 
 \section{Use of AI assistance}
 \label{app:ai}
-\TODO{State honestly how AI tools were used, following the course policy (e.g.\ ``AI assistants were used to help draft code and text; the team ran all experiments, checked all code and results, and is responsible for the content.'')}
+An AI assistant (Claude, Anthropic) was used to help write the code and draft parts of this report. All training and evaluation runs were executed by us on Kaggle, and all reported numbers come from our own logs (\texttt{runs/*/summary.json}). We reviewed the code and results and take responsibility for the content. \TODO{Check this statement against the course policy and edit it so it is accurate.}
 
 \end{document}

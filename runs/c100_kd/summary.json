@@ -1,0 +1,22 @@
+{
+  "name": "c100_kd",
+  "preset": "c100_kd",
+  "dataset": "cifar100",
+  "method": "kd",
+  "arch": "resnet20",
+  "teacher_arch": "resnet56",
+  "teacher_acc": 72.44,
+  "temperature": 4.0,
+  "ce_weight": 0.1,
+  "kd_weight": 0.9,
+  "epochs": 240,
+  "seed": 0,
+  "final_acc": 70.92,
+  "final_acc5": 92.28,
+  "best_acc": 71.16,
+  "best_epoch": 216,
+  "train_minutes": 68.4735114534696,
+  "params_M": 0.278324,
+  "gpu": "Tesla T4",
+  "torch": "2.11.0+cu130"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "abl_z_w0.9",
+  "preset": "abl_z_w0.9",
+  "dataset": "cifar100",
+  "method": "kd_ls",
+  "arch": "resnet20",
+  "teacher_arch": "resnet56",
+  "teacher_acc": 72.44,
+  "temperature": 2.0,
+  "ce_weight": 0.1,
+  "kd_weight": 0.9,
+  "epochs": 240,
+  "seed": 0,
+  "final_acc": 69.79,
+  "final_acc5": 92.52,
+  "best_acc": 70.13,
+  "best_epoch": 238,
+  "train_minutes": 65.08273719946543,
+  "params_M": 0.278324,
+  "gpu": "Tesla T4",
+  "torch": "2.11.0+cu130"
+}
