@@ -1,0 +1,388 @@
+{
+  "dataset": "cifar10",
+  "models": {
+    "Teacher": {
+      "top1": 94.12999749183655,
+      "top5": 99.77999925613403,
+      "ece": 3.6066390573978424,
+      "mean_confidence": 97.66035079956055,
+      "logit_mean": 0.0002983478188980371,
+      "logit_std": 4.231567859649658,
+      "logit_max": 10.684746742248535,
+      "worst_classes": [
+        [
+          "cat",
+          87.2
+        ],
+        [
+          "dog",
+          89.9
+        ],
+        [
+          "bird",
+          91.6
+        ],
+        [
+          "horse",
+          95.0
+        ],
+        [
+          "airplane",
+          95.4
+        ]
+      ],
+      "best_classes": [
+        [
+          "automobile",
+          97.1
+        ],
+        [
+          "frog",
+          96.6
+        ],
+        [
+          "ship",
+          96.4
+        ],
+        [
+          "deer",
+          96.1
+        ],
+        [
+          "truck",
+          96.0
+        ]
+      ],
+      "top_confusions": [
+        {
+          "true": "cat",
+          "pred": "dog",
+          "count": 63
+        },
+        {
+          "true": "dog",
+          "pred": "cat",
+          "count": 56
+        },
+        {
+          "true": "automobile",
+          "pred": "truck",
+          "count": 23
+        },
+        {
+          "true": "airplane",
+          "pred": "ship",
+          "count": 21
+        },
+        {
+          "true": "ship",
+          "pred": "airplane",
+          "count": 20
+        },
+        {
+          "true": "truck",
+          "pred": "automobile",
+          "count": 20
+        },
+        {
+          "true": "bird",
+          "pred": "deer",
+          "count": 19
+        },
+        {
+          "true": "bird",
+          "pred": "airplane",
+          "count": 18
+        },
+        {
+          "true": "cat",
+          "pred": "frog",
+          "count": 18
+        },
+        {
+          "true": "cat",
+          "pred": "bird",
+          "count": 17
+        }
+      ],
+      "per_class_acc": [
+        95.40000557899475,
+        97.1000075340271,
+        91.60000681877136,
+        87.20000386238098,
+        96.10000252723694,
+        89.90000486373901,
+        96.60000205039978,
+        95.00000476837158,
+        96.40000462532043,
+        96.00000381469727
+      ],
+      "checkpoint": "runs/c10_teacher_resnet56/final.pth"
+    },
+    "Vanilla KD": {
+      "top1": 93.18999648094177,
+      "top5": 99.83999729156494,
+      "ece": 4.664516821503639,
+      "mean_confidence": 97.81766533851624,
+      "logit_mean": 0.0064300657249987125,
+      "logit_std": 4.170755386352539,
+      "logit_max": 10.739754676818848,
+      "worst_classes": [
+        [
+          "cat",
+          84.5
+        ],
+        [
+          "dog",
+          88.9
+        ],
+        [
+          "bird",
+          90.8
+        ],
+        [
+          "deer",
+          93.4
+        ],
+        [
+          "horse",
+          93.9
+        ]
+      ],
+      "best_classes": [
+        [
+          "truck",
+          97.1
+        ],
+        [
+          "automobile",
+          97.1
+        ],
+        [
+          "ship",
+          96.3
+        ],
+        [
+          "frog",
+          95.6
+        ],
+        [
+          "airplane",
+          94.3
+        ]
+      ],
+      "top_confusions": [
+        {
+          "true": "dog",
+          "pred": "cat",
+          "count": 68
+        },
+        {
+          "true": "cat",
+          "pred": "dog",
+          "count": 65
+        },
+        {
+          "true": "bird",
+          "pred": "airplane",
+          "count": 24
+        },
+        {
+          "true": "automobile",
+          "pred": "truck",
+          "count": 23
+        },
+        {
+          "true": "cat",
+          "pred": "bird",
+          "count": 22
+        },
+        {
+          "true": "airplane",
+          "pred": "ship",
+          "count": 21
+        },
+        {
+          "true": "deer",
+          "pred": "cat",
+          "count": 21
+        },
+        {
+          "true": "ship",
+          "pred": "airplane",
+          "count": 20
+        },
+        {
+          "true": "bird",
+          "pred": "deer",
+          "count": 19
+        },
+        {
+          "true": "bird",
+          "pred": "frog",
+          "count": 19
+        }
+      ],
+      "per_class_acc": [
+        94.30000185966492,
+        97.1000075340271,
+        90.80000519752502,
+        84.50000286102295,
+        93.4000015258789,
+        88.90000581741333,
+        95.6000030040741,
+        93.90000700950623,
+        96.30000591278076,
+        97.1000075340271
+      ],
+      "checkpoint": "runs/c10_kd/final.pth",
+      "sha256": "b4ed8bc8c0f5",
+      "arch": "resnet20",
+      "agree_with_teacher": 94.02999877929688,
+      "spearman_with_teacher": 0.8092219233512878,
+      "kl_raw_T4": 0.05846358463168144,
+      "kl_zscore_tau2": 0.011613884940743446
+    },
+    "KD+LS": {
+      "top1": 93.14000010490417,
+      "top5": 99.8199999332428,
+      "ece": 5.495132505893707,
+      "mean_confidence": 87.64486312866211,
+      "logit_mean": 0.003331355517730117,
+      "logit_std": 2.1753432750701904,
+      "logit_max": 5.7837114334106445,
+      "worst_classes": [
+        [
+          "cat",
+          85.0
+        ],
+        [
+          "dog",
+          89.2
+        ],
+        [
+          "bird",
+          91.2
+        ],
+        [
+          "airplane",
+          93.5
+        ],
+        [
+          "horse",
+          94.5
+        ]
+      ],
+      "best_classes": [
+        [
+          "automobile",
+          96.3
+        ],
+        [
+          "truck",
+          96.0
+        ],
+        [
+          "ship",
+          95.9
+        ],
+        [
+          "deer",
+          95.0
+        ],
+        [
+          "frog",
+          94.8
+        ]
+      ],
+      "top_confusions": [
+        {
+          "true": "dog",
+          "pred": "cat",
+          "count": 71
+        },
+        {
+          "true": "cat",
+          "pred": "dog",
+          "count": 68
+        },
+        {
+          "true": "airplane",
+          "pred": "ship",
+          "count": 32
+        },
+        {
+          "true": "automobile",
+          "pred": "truck",
+          "count": 24
+        },
+        {
+          "true": "ship",
+          "pred": "airplane",
+          "count": 23
+        },
+        {
+          "true": "cat",
+          "pred": "bird",
+          "count": 22
+        },
+        {
+          "true": "truck",
+          "pred": "automobile",
+          "count": 20
+        },
+        {
+          "true": "bird",
+          "pred": "frog",
+          "count": 19
+        },
+        {
+          "true": "frog",
+          "pred": "bird",
+          "count": 19
+        },
+        {
+          "true": "cat",
+          "pred": "frog",
+          "count": 18
+        }
+      ],
+      "per_class_acc": [
+        93.50000619888306,
+        96.30000591278076,
+        91.2000060081482,
+        85.00000238418579,
+        95.00000476837158,
+        89.20000195503235,
+        94.80000734329224,
+        94.50000524520874,
+        95.90000510215759,
+        96.00000381469727
+      ],
+      "checkpoint": "runs/c10_kd_ls/final.pth",
+      "sha256": "b7fff11be0fe",
+      "arch": "resnet20",
+      "agree_with_teacher": 94.30999755859375,
+      "spearman_with_teacher": 0.8268183469772339,
+      "kl_raw_T4": 0.2619261145591736,
+      "kl_zscore_tau2": 0.010567832738161087
+    }
+  },
+  "agreement": {
+    "Teacher vs Vanilla KD": {
+      "agree": 94.02999877929688,
+      "only_first_correct": 308,
+      "only_second_correct": 214
+    },
+    "Teacher vs KD+LS": {
+      "agree": 94.30999755859375,
+      "only_first_correct": 293,
+      "only_second_correct": 194
+    },
+    "Vanilla KD vs KD+LS": {
+      "agree": 93.9300000667572,
+      "only_first_correct": 263,
+      "only_second_correct": 258
+    }
+  }
+}
