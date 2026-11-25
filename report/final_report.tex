@@ -1,9 +1,10 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[12pt,a4paper]{article}
 
 % -------------------- PACKAGES --------------------
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern}
+\usepackage{mathptmx}% Times New Roman (text and maths)
+\renewcommand{\ttdefault}{lmtt}
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{setspace}
 \usepackage{graphicx}
@@ -15,7 +16,15 @@
 \usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage{xurl}
-\usepackage{caption}
+\usepackage[labelfont=bf,font=small]{caption}
+\usepackage[nottoc,numbib]{tocbibind}% lists of figures/tables and references in the contents
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\fontsize{16}{19}\bfseries}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\normalfont\fontsize{14}{17}\bfseries}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\bfseries}{\thesubsubsection}{0.8em}{}
+\newcommand{\sectionbreak}{\clearpage}% every main section starts on a new page
+\widowpenalty=10000 \clubpenalty=10000
+\raggedbottom
 \usepackage{enumitem}
 \usepackage{microtype}
 \usepackage{algorithm}
@@ -34,7 +43,7 @@
 \hypersetup{
     colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue,
     pdftitle={Final Report: Logit Standardization in Knowledge Distillation},
-    pdfauthor={Abiha Jawaid, Bismah Imran, Zainab Asif}
+    pdfauthor={Abiha Jawaid, Bismah Imam, Zainab Asif}
 }
 
 % ---------- things the team must still fill in (shown in red; delete when done) ----------
@@ -82,7 +91,7 @@
 \begin{document}
 
 % ==================== TITLE PAGE ====================
-\begin{titlepage}
+\begin{titlepage}\thispagestyle{empty}
     \centering
     \vspace*{1.2cm}
     {\Large \textbf{FINAL REPORT}\par}
@@ -93,7 +102,7 @@
     \vspace{1cm}
     \textbf{Team Members}\\[6pt]
     Abiha Jawaid (36395)\\
-    Bismah Imran (36222)\\
+    Bismah Imam (36222)\\
     Zainab Asif (36232)
     \vspace{1cm}
 
@@ -110,36 +119,67 @@
     {\large Submitted: 25 November 2026\par}
 \end{titlepage}
 
-\begin{abstract}
-Knowledge distillation (KD) trains a small \emph{student} network to imitate the softened class probabilities of a large \emph{teacher}. Sun et al.\ (CVPR 2024) argue that the usual practice of using one shared softmax temperature for teacher and student silently forces the student to reproduce the teacher's logit \emph{scale} (range and variance), even though only the \emph{relations} between class scores are needed. They propose a parameter-free Z-score \emph{logit standardization} (LS) of both logit vectors before the softmax. We re-implemented vanilla KD and KD+LS in PyTorch, distilled a pretrained ResNet-56 teacher into a ResNet-20 student on CIFAR-100, and compared against the paper's reported numbers (KD $70.66\%$, KD+LS $71.43\%$). Our single-seed runs reproduce the teacher (72.44\%) and vanilla KD (\KDacc\%) closely, but KD+LS reaches \LSacc\%, so we do \emph{not} reproduce the paper's +0.77 point gain for this pair (ours: +\LSgain). Our diagnostics nevertheless confirm the mechanism the paper describes: the vanilla-KD student copies the teacher's logit spread almost exactly (mean per-image logit std \KDlogitstd\ vs.\ \Tlogitstd), whereas the LS student uses a much smaller scale (\LSlogitstd) while matching the teacher's class \emph{ranking} better. A $2\times2$ ablation shows that standardization and the ten-times-larger distillation weight interact as the paper predicts (the large weight hurts raw-logit KD by 0.87 points but helps LS by 1.16), yet the best vanilla KD configuration ($T{=}2$, 71.43\%) is the strongest student overall. We argue that for this small-gap, same-family pair the vanilla student is able to match the teacher's logit scale, so the constraint LS removes is not a bottleneck. The same picture holds on CIFAR-10 (KD 93.19\%, KD+LS 93.11\%) and across base temperatures $\tau\in\{1,2,4\}$ (70.95--71.36\%). Finally, we deployed both students in a Streamlit web application that shows the full inference pipeline and visualises raw versus standardized logits for any uploaded image.
-\end{abstract}
+\pagenumbering{roman}
+\setcounter{page}{2}
+\begin{center}{\fontsize{16}{19}\bfseries Abstract}\end{center}
+\addcontentsline{toc}{section}{Abstract}
 
+Knowledge distillation (KD) is a way of training a small network (the student) by letting it copy the soft predictions of a larger, already trained network (the teacher). Sun et al.\ (CVPR 2024) point out that the usual practice of giving the teacher and the student the same softmax temperature quietly forces the student to reproduce the size and spread of the teacher's logits, when in fact only the relations between the class scores matter. Their remedy is to Z-score standardize each network's logits before the softmax, a step they call logit standardization (LS).
+
+In this project we wrote our own PyTorch implementation of vanilla KD and of KD with LS and distilled a pretrained ResNet-56 into a ResNet-20 on CIFAR-100. The teacher (72.44\%) and the vanilla KD student (\KDacc\%) came out close to the published values, but the LS student reached \LSacc\%, so the paper's improvement of 0.77 points did not appear in our runs (we measured +\LSgain). The diagnostics we collected still agree with the paper's explanation. The vanilla KD student ends up with almost the same logit spread as the teacher (\KDlogitstd\ against \Tlogitstd), while the LS student settles on a much smaller scale (\LSlogitstd) and orders the classes more like the teacher does.
+
+We also ran three further experiments. A $2\times2$ ablation shows that standardization only pays off together with the ten times larger distillation weight that the LS recipe uses: the large weight costs vanilla KD 0.87 points and gains LS 1.16 points. On CIFAR-10 the two methods tie (93.19\% and 93.11\%), and LS turned out to be insensitive to its base temperature (70.95--71.36\% for $\tau=1,2,4$). Our reading is that ResNet-20 is close enough to ResNet-56 that it can already match the teacher's logit scale, so removing that requirement does not change its accuracy. Finally, both students are deployed in a Streamlit web application that shows every step from the input image to the prediction.
+\clearpage
 \tableofcontents
-\newpage
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+\section*{List of Abbreviations}
+\addcontentsline{toc}{section}{List of Abbreviations}
+\begin{tabular}{ll}
+AMP & Automatic mixed precision \\
+CE & Cross-entropy (loss) \\
+CIFAR & Canadian Institute for Advanced Research (image datasets) \\
+CNN & Convolutional neural network \\
+CPU / GPU & Central / graphics processing unit \\
+CTKD & Curriculum temperature knowledge distillation \\
+DKD & Decoupled knowledge distillation \\
+ECE & Expected calibration error \\
+EDA & Exploratory data analysis \\
+KD & Knowledge distillation \\
+KL & Kullback--Leibler (divergence) \\
+LS & Logit standardization \\
+MLKD & Multi-level logit distillation \\
+SGD & Stochastic gradient descent \\
+$T$, $\tau$ & Softmax temperature, base temperature \\
+$\lambda_{CE}$, $\lambda_{KD}$ & Weights of the CE and KD loss terms \\
+\end{tabular}
+\clearpage
+\pagenumbering{arabic}
 
 % ============================================================
 \section{Introduction and Problem Statement}
 % ============================================================
 
-Deep networks with high accuracy are often too large or too slow for phones, embedded devices or high-throughput services. \emph{Knowledge distillation} \cite{hinton2015} is a model-compression technique: a high-capacity \emph{teacher} that has already been trained supervises the training of a compact \emph{student}. Besides the ground-truth label, the student is asked to match the teacher's full probability distribution over classes, which carries ``dark knowledge'' such as \emph{a leopard looks more like a tiger than like a bicycle}.
+Accurate deep networks are often too big or too slow to run on phones and other small devices. Knowledge distillation \cite{hinton2015} is one way around this. A large network that has already been trained, the teacher, is used to train a much smaller network, the student. Apart from the correct label, the student also learns from the teacher's full probability distribution over the classes. This distribution carries what Hinton et al.\ called dark knowledge: for example, that a leopard looks more like a tiger than like a bicycle.
 
-In standard logit-based KD, both networks' logits are divided by the \emph{same} temperature $T$ before the softmax, and the student minimises the Kullback--Leibler (KL) divergence between the two softened distributions. Sun et al.\ \cite{sun2024} show that this shared temperature has a hidden side-effect: at the optimum, the student's logits must equal the teacher's logits up to a constant shift, and therefore must have the \emph{same standard deviation}. A small student may not be able to produce logits as large and as spread out as a big teacher's, and it does not need to---it only needs the right \emph{ranking and relative spacing} of classes to predict well.
+In standard KD, the logits of both networks are divided by the same temperature $T$ before the softmax, and the student is trained to minimise the Kullback--Leibler (KL) divergence between the two softened distributions. Sun et al.\ \cite{sun2024} show that sharing $T$ has a side effect. If the student matched the teacher perfectly, its logits would have to equal the teacher's logits plus a constant, and so they would also need the same standard deviation. A small student may not be able to produce logits as large and as spread out as a big teacher's. It also does not need to, because predicting the right class only requires ranking and spacing the classes in the right way.
 
-\textbf{Problem statement.} Does removing this implicit ``match the teacher's logit magnitude'' constraint---by Z-score standardizing teacher and student logits separately before the softmax---help a small student learn from a large teacher, and if so, why?
+\textbf{Problem statement.} If the teacher's and the student's logits are each Z-score standardized before the softmax, the student no longer has to match the size of the teacher's logits. Does this help a small student learn from a large teacher, and if it does, why?
 
 \textbf{Objectives of this project.}
 \begin{enumerate}[nosep]
     \item Explain the paper's method and theory in our own words (Section~\ref{sec:method}).
     \item Re-implement vanilla KD and KD+LS and reproduce the paper's ResNet-56$\rightarrow$ResNet-20 CIFAR-100 result (Sections~\ref{sec:impl}--\ref{sec:repro}).
-    \item Answer two additional research questions experimentally (Section~\ref{sec:exp}).
+    \item Answer three further research questions with our own experiments (Section~\ref{sec:exp}).
     \item Deploy the trained students in a web application (Section~\ref{sec:deploy}).
 \end{enumerate}
 
 % ============================================================
 \section{Literature Review / Background}
 % ============================================================
-\emph{(Carried over from the Mid-Evaluation report, lightly refined; see Appendix~\ref{app:revisions}.)}
-
 \subsection{Background and importance}
 Deep neural networks achieve strong image-classification results, but high-performing models can require substantial memory, computation and energy, which creates a deployment barrier for devices with limited resources. Model compression seeks to reduce these costs while retaining predictive performance; knowledge distillation is one such approach in which a high-capacity teacher guides a smaller student during training \cite{hu2023,mansourian2025}.
 
@@ -163,7 +203,7 @@ KD methods are commonly grouped by what is transferred: \emph{logit-based} metho
 \textbf{Capacity gap.} Several works observe that a larger teacher is not always a better teacher for a small student \cite{cho2019,mirzadeh2020}. Sun et al.\ offer a new explanation: a small student cannot reproduce the compact, large-range logits of a big teacher, and shared-temperature KD asks it to.
 
 \subsection{Research gap and project scope}
-The paper establishes LS as a lightweight way to relax the shared-scale constraint and reports results averaged over four runs on many teacher--student pairs. Our project (i) reproduces the ResNet-56$\rightarrow$ResNet-20 CIFAR-100 pair with our own implementation; (ii) tests whether the improvement is really caused by the standardization or by the much larger distillation weight that the LS recipe uses---a confound that matters for anyone adopting the method; and (iii) tests our own hypothesis that, because the mean and standard deviation are estimated from only $K$ logits per image, the benefit may differ when there are only $K{=}10$ classes (CIFAR-10).
+The paper establishes LS as a lightweight way to relax the shared-scale constraint and reports results averaged over four runs on many teacher--student pairs. Our project (i) reproduces the ResNet-56$\rightarrow$ResNet-20 CIFAR-100 pair with our own implementation; (ii) tests whether the improvement is really caused by the standardization or by the much larger distillation weight that the LS recipe uses, which matters for anyone who wants to adopt the method; and (iii) tests our own hypothesis that, because the mean and standard deviation are estimated from only $K$ logits per image, the benefit may differ when there are only $K{=}10$ classes (CIFAR-10).
 
 % ============================================================
 \section{Paper Methodology}
@@ -193,8 +233,8 @@ Write each softmax with a general shift $a$ and scale $b$: $q^{(k)}\propto\exp\b
 \end{equation}
 With a shared temperature ($b_S=b_T$) this yields two ``shackles'':
 \begin{enumerate}[nosep]
-\item \textbf{Logit shift:} $z^{(i)}=v^{(i)}+\Delta$ --- the student must copy the teacher's logits exactly up to one constant.
-\item \textbf{Variance match:} $\sigma(\mathbf{z})=\sigma(\mathbf{v})$ --- the student's logits must be exactly as spread out as the teacher's.
+\item \textbf{Logit shift:} $z^{(i)}=v^{(i)}+\Delta$, so the student has to copy the teacher's logits exactly, apart from one constant.
+\item \textbf{Variance match:} $\sigma(\mathbf{z})=\sigma(\mathbf{v})$, so the student's logits have to be exactly as spread out as the teacher's.
 \end{enumerate}
 But for correct prediction it is enough that the student \emph{ranks} the classes like the teacher \cite{huang2022}. Forcing a small network to also match the scale wastes capacity and, as the paper's Fig.~3 shows, a vanilla-KD student often cannot reach the teacher's target logit (7.5 vs.\ 12 in their example).
 
@@ -298,7 +338,7 @@ Seed & 0 (one run per configuration) \\
 \end{table}
 
 \subsection{Environment and dependencies}
-Training: Kaggle notebooks with two NVIDIA Tesla T4 GPUs (16 GB), one training run per GPU, PyTorch 2.11 with CUDA 13 (versions are stored in each run's \texttt{summary.json}). One distillation run took about 67 minutes (17 s per epoch); training the student alone took 40 minutes. Deployment: a CPU laptop, Python 3.9, PyTorch, torchvision, NumPy, Pillow, Matplotlib, Streamlit (\texttt{requirements.txt}).
+Training: Kaggle notebooks with two NVIDIA Tesla T4 GPUs (16 GB), one training run per GPU, PyTorch 2.11 with CUDA 13 (versions are stored in each run's \texttt{summary.json}). One distillation run took about 67 minutes (17 s per epoch); training the student alone took 40 minutes. Deployment: a CPU laptop, Python 3.12, PyTorch, torchvision, NumPy, Pillow, Matplotlib, Streamlit (\texttt{requirements.txt}).
 
 \subsection{Code structure}
 \begin{itemize}[nosep]
@@ -312,12 +352,13 @@ Training: Kaggle notebooks with two NVIDIA Tesla T4 GPUs (16 GB), one training r
 \end{itemize}
 
 \subsection{Code and result attribution}
+Table~\ref{tab:attr} lists which parts of the project we wrote ourselves, which we adapted and which we reused, and separates the paper's results from ours.
 \begin{table}[H]
 \centering
 \caption{What we wrote, adapted and reused.}
 \label{tab:attr}
 \small
-\begin{tabularx}{\textwidth}{lXl}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}X l}
 \toprule
 Component & Status & Source \\
 \midrule
@@ -334,7 +375,6 @@ Numbers labelled ``Ours'' & Obtained by our team & this report \\
 \bottomrule
 \end{tabularx}
 \end{table}
-We did not clone and run the official repository; it was used only as a reference to confirm implementation details. AI coding assistants were used while writing parts of the code and text; all components were run, tested and checked by the team (Appendix~\ref{app:ai}).
 
 \subsection{Deviations and feasibility adjustments}
 \begin{itemize}[nosep]
@@ -352,10 +392,8 @@ Before training, we checked the implementation with unit tests (\texttt{tests/te
 % ============================================================
 \section{Dataset and Preprocessing / EDA}
 % ============================================================
-\emph{(Carried over from the Mid-Evaluation report; the preprocessing subsection is updated to the final training pipeline.)}
-
 \subsection{Dataset selection and structure}
-CIFAR-100 \cite{krizhevsky2009} is the primary dataset because it is used in the paper. It contains 60,000 colour images of $32\times32$ pixels split into 50,000 training and 10,000 test images across 100 classes (grouped into 20 super-classes). CIFAR-10, with the same image format but only 10 classes, is used for Experiment~B. Because the class sets differ, accuracies on the two datasets are reported separately and are not compared directly as measures of method quality.
+CIFAR-100 \cite{krizhevsky2009} is the primary dataset because it is used in the paper. It contains 60,000 colour images of $32\times32$ pixels split into 50,000 training and 10,000 test images across 100 classes (grouped into 20 super-classes). CIFAR-10, with the same image format but only 10 classes, is used for Experiment~B. Table~\ref{tab:dataset_statistics} summarises both datasets. Because the class sets differ, accuracies on the two datasets are reported separately and are not compared directly as measures of method quality.
 
 \begin{table}[H]
 \centering
@@ -374,14 +412,14 @@ CIFAR-10 test & 10,000 & 10 & 1,000 \\
 \end{table}
 
 \subsection{Class distribution}
-The EDA notebook counts labels per split and confirms that every CIFAR-100 class has exactly 500 training and 100 test images (min = max), so overall accuracy is not dominated by any class.
+The EDA notebook counts labels per split and confirms that every CIFAR-100 class has exactly 500 training and 100 test images (min = max; Figure~\ref{fig:classcounts}), so overall accuracy is not dominated by any class.
 
-\maybefig[0.6]{Picture1.png}{CIFAR-100 images per class in the official training and test splits.}{fig:classcounts}
+\maybefig[0.95]{figures/eda_class_counts.png}{CIFAR-100 images per class in the official training and test splits.}{fig:classcounts}
 
 \subsection{Raw image inspection}
-Each sample is a low-resolution RGB image. At $32\times32$ objects may occupy only part of the image and fine details are ambiguous; several classes are visually similar (e.g.\ maple/oak/willow tree, boy/girl/baby/man/woman), which makes 100-way classification hard.
+Each sample is a low-resolution RGB image. At $32\times32$ objects may occupy only part of the image and fine details are ambiguous; several classes are visually similar (e.g.\ maple/oak/willow tree, boy/girl/baby/man/woman), which makes 100-way classification hard (Figure~\ref{fig:raw}).
 
-\maybefig[0.6]{Raw Pictures in CIFAR.png}{Representative raw CIFAR-100 training images and their labels.}{fig:raw}
+\maybefig[0.7]{figures/eda_samples.png}{Representative raw CIFAR-100 training images and their labels.}{fig:raw}
 
 \subsection{Missing data, anomalies and challenges}
 CIFAR is distributed as fixed-size uint8 arrays with integer labels, so missing values are not expected; the notebook nevertheless checks array shape $(50000,32,32,3)$, dtype uint8, pixel range 0--255, finite values and label range 0--99, and all checks pass. The main challenges are low resolution, visually similar fine classes, intra-class variation and run-to-run variance of training.
@@ -466,7 +504,7 @@ Table~\ref{tab:diag} is computed by \texttt{evaluate.py} in full fp32 precision;
 
 \maybefig[0.6]{figures/ablation.pdf}{Experiment A: effect of standardization and KD weight.}{fig:ablation}
 
-\textbf{Result.} The two factors interact exactly in the direction the paper predicts. Increasing $\lambda_{KD}$ from 0.9 to 9 \emph{lowers} raw-logit KD by 0.87 points (71.43\%$\rightarrow$70.56\%) but \emph{raises} Z-scored KD by 1.16 points (69.79\%$\rightarrow$70.95\%). At the small weight, standardization is harmful ($-1.64$): the LS student at $\lambda_{KD}=0.9$ (69.79\%) is no better than the student trained without a teacher (\CEacc\%), i.e.\ the distillation signal is almost lost. At the large weight, standardization helps ($+0.39$). However, the best cell overall is plain KD with raw logits at $T=2$, $\lambda_{KD}=0.9$ (71.43\%), which also beats our $T=4$ vanilla KD baseline by half a point.
+\textbf{Result.} Table~\ref{tab:ablation} and Figure~\ref{fig:ablation} show that the two factors interact in the direction the paper predicts. Increasing $\lambda_{KD}$ from 0.9 to 9 \emph{lowers} raw-logit KD by 0.87 points (71.43\%$\rightarrow$70.56\%) but \emph{raises} Z-scored KD by 1.16 points (69.79\%$\rightarrow$70.95\%). At the small weight, standardization is harmful ($-1.64$): the LS student at $\lambda_{KD}=0.9$ (69.79\%) is no better than the student trained without a teacher (\CEacc\%), i.e.\ the distillation signal is almost lost. At the large weight, standardization helps ($+0.39$). However, the best cell overall is plain KD with raw logits at $T=2$, $\lambda_{KD}=0.9$ (71.43\%), which also beats our $T=4$ vanilla KD baseline by half a point.
 
 \textbf{Answer to the research question.} The Z-score alone does not improve distillation; it only works together with a large KD weight, so the two parts of the LS recipe cannot be separated. For ResNet-56$\rightarrow$ResNet-20 the combination is still not better than a well-chosen vanilla KD temperature. Differences of a few tenths of a point are within the run-to-run noise of single runs (Section~\ref{sec:disc}).
 
@@ -492,7 +530,7 @@ Table~\ref{tab:diag} is computed by \texttt{evaluate.py} in full fp32 precision;
 
 \textbf{Result.} Our CIFAR-10 teacher reaches 94.12\%. Vanilla KD gives \CTENkd\% and KD+LS \CTENls\%, a difference of \CTENgain\ points; the mean of the last ten epochs is identical (93.19\% for both), so there is no measurable gain on CIFAR-10 either. The internal effect of LS is the same as on CIFAR-100: the vanilla-KD student again copies the teacher's logit spread (per-image logit std 4.17 vs.\ 4.23), the LS student uses about half of it (2.18) and ranks the ten classes more like the teacher (Spearman $\rho=0.827$ vs.\ 0.809) and agrees with the teacher's prediction more often (94.31\% vs.\ 94.03\%). The two students disagree on only 6\% of the test images and are each right on almost the same number of them (258 vs.\ 263).
 
-\textbf{Answer to the research question.} We hypothesised a \emph{smaller} gain on CIFAR-10 than on CIFAR-100. Because the CIFAR-100 gain itself was essentially zero in our runs, this comparison cannot confirm or reject the hypothesis. What the experiment does show is that the mechanism---free logit scale, better-preserved class ranking---also appears with only $K=10$ logits per image, but, as on CIFAR-100, it does not translate into higher top-1 accuracy for this teacher--student pair.
+\textbf{Answer to the research question.} We hypothesised a \emph{smaller} gain on CIFAR-10 than on CIFAR-100. Because the CIFAR-100 gain itself was essentially zero in our runs, this comparison cannot confirm or reject the hypothesis. What the experiment does show is that the mechanism (a free logit scale and a better preserved class ranking) also appears with only $K=10$ logits per image, but, as on CIFAR-100, it does not translate into higher top-1 accuracy for this teacher--student pair.
 
 \subsection{Experiment C -- Base temperature $\tau$}
 \textbf{Research question.} How sensitive is KD+LS to its only remaining hyper-parameter, the base temperature $\tau$? (This was the ``small temperature study'' planned in the proposal.)
@@ -541,12 +579,12 @@ Although accuracy did not change, the two students are very different internally
 \item \textbf{Free scale under LS.} The LS student's logits have a standard deviation of only \LSlogitstd\ and a largest logit of 6.5. Measured with raw logits, it is therefore much further from the teacher (KL 0.465 vs.\ 0.140).
 \item \textbf{Better relations under LS.} After standardization the LS student is \emph{closer} to the teacher (KL 0.028 vs.\ 0.033), ranks the 100 classes more like the teacher (Spearman $\rho=0.870$ vs.\ 0.846), agrees with the teacher's prediction slightly more often (74.9\% vs.\ 74.6\%) and has higher top-5 accuracy (92.69\% vs.\ 92.31\%). This mirrors the paper's Fig.~3 and our toy example: a raw-logit KL would call the LS student the worse imitator, a scale-free measure calls it the better one.
 \end{itemize}
-Why did better relations not give better top-1 accuracy? The key observation is the first bullet: this ResNet-20 student was \emph{able} to reproduce the teacher's logit scale, so the constraint was satisfied at little cost. The paper motivates LS with students that \emph{cannot} reach a large teacher's logit range (7.5 vs.\ 12 in its Fig.~3); ResNet-56 and ResNet-20 belong to the same family and differ by only 3 points of accuracy, so this capacity gap is small. The two students make different mistakes---they disagree on 22\% of test images---but each is right on almost exactly as many of those images as the other (666 vs.\ 667), so the net accuracy is the same.
+Why did better relations not give better top-1 accuracy? The key observation is the first bullet: this ResNet-20 student was \emph{able} to reproduce the teacher's logit scale, so the constraint was satisfied at little cost. The paper motivates LS with students that \emph{cannot} reach a large teacher's logit range (7.5 vs.\ 12 in its Fig.~3); ResNet-56 and ResNet-20 belong to the same family and differ by only 3 points of accuracy, so this capacity gap is small. The two students make different mistakes, disagreeing on 22\% of the test images, but each is right on almost exactly as many of those images as the other (666 vs.\ 667), so the net accuracy is the same.
 
 \textbf{Calibration side effect.} Because the LS student's raw logits are small, its softmax probabilities are low: average confidence 53.4\% at 71.0\% accuracy, i.e.\ strongly \emph{under}-confident (ECE 17.6). The vanilla-KD student is over-confident (82.9\% confidence, ECE 11.9), like the teacher (85.0\%, ECE 12.6). In the deployed app this means the LS student's displayed probabilities should not be read as calibrated confidences; temperature scaling on a validation set would fix this without changing predictions.
 
 \subsection{Does it generalise to fewer classes and other temperatures?}
-On CIFAR-10 (Table~\ref{tab:c10}) the result repeats: no accuracy difference between KD and KD+LS, but the same internal signature---the vanilla-KD student matches the teacher's logit spread (4.17 vs.\ 4.23), the LS student does not need to (2.18) and preserves the teacher's class ranking better. Our hypothesis that fewer classes would reduce the gain could not be tested, because there was no gain to reduce on CIFAR-100. The temperature study (Table~\ref{tab:tau}) shows that the lack of a clear gain is not caused by an unlucky choice of $\tau$: across $\tau\in\{1,2,4\}$, KD+LS stays between 70.95\% and 71.36\%, i.e.\ at the level of the better vanilla KD configurations. Taken together, the eleven runs give a consistent picture: for ResNet-56$\rightarrow$ResNet-20, every reasonable KD configuration, with or without standardization, ends within about half a point of 71\%, and standardization changes the student's logit geometry without changing its accuracy.
+On CIFAR-10 (Table~\ref{tab:c10}) the result repeats: no accuracy difference between KD and KD+LS, but the same internal pattern appears. The vanilla-KD student matches the teacher's logit spread (4.17 vs.\ 4.23), the LS student does not need to (2.18) and preserves the teacher's class ranking better. Our hypothesis that fewer classes would reduce the gain could not be tested, because there was no gain to reduce on CIFAR-100. The temperature study (Table~\ref{tab:tau}) shows that the lack of a clear gain is not caused by an unlucky choice of $\tau$: across $\tau\in\{1,2,4\}$, KD+LS stays between 70.95\% and 71.36\%, i.e.\ at the level of the better vanilla KD configurations. Taken together, the eleven runs give a consistent picture: for ResNet-56$\rightarrow$ResNet-20, every reasonable KD configuration, with or without standardization, ends within about half a point of 71\%, and standardization changes the student's logit geometry without changing its accuracy.
 
 \subsection{Interpreting training losses}
 The distillation losses of KD and KD+LS are not comparable in value: they are computed on differently scaled inputs, with different temperatures and weights. Our toy example (Table~\ref{tab:toy}) shows that even for a fixed teacher a lower vanilla KL does not imply a better student, which is why we compare students by test accuracy and by scale-free diagnostics.
@@ -566,6 +604,8 @@ The distillation losses of KD and KD+LS are not comparable in value: they are co
 \node[box,right=of p] (o) {Output\\web page};
 \draw[-{Latex}] (in)--(pre); \draw[-{Latex}] (pre)--(m); \draw[-{Latex}] (m)--(p); \draw[-{Latex}] (p)--(o);
 \end{tikzpicture}
+
+{\small Deployment pipeline.}
 \end{center}
 
 The pipeline is implemented once in \texttt{lskd/inference.py} and used by both the command-line tool (\texttt{infer.py}) and the Streamlit web app (\texttt{app.py}). Preprocessing is identical to the test-time transform used in evaluation.
@@ -589,11 +629,29 @@ Dependencies: Python $\geq$3.9, PyTorch, torchvision, NumPy, Pillow, Matplotlib,
 $ python infer.py --ckpt checkpoints/student_kd.pth checkpoints/student_kd_ls.pth \
                   --image demo_images/<file>.png
 \end{lstlisting}
-\TODO{Paste the printed output here (top-5 classes and probabilities for both models).}
+The same pipeline runs in the web app. As an example, for the unseen CIFAR-100 test image \texttt{06799\_bicycle.png} (a recumbent bicycle, Figs.~\ref{fig:app1}--\ref{fig:app3}) the three models give the outputs in Table~\ref{tab:example}, as displayed by the app in Figure~\ref{fig:app2}:
+
+\begin{table}[H]
+\centering
+\caption{Example inference on an unseen test image (ground truth: \emph{bicycle}). Latency measured on a laptop CPU.}
+\label{tab:example}
+\begin{tabular}{lcccc}
+\toprule
+Model & Top-1 (prob.) & Second (prob.) & Raw logit std & Latency \\
+\midrule
+Vanilla KD student & motorcycle (97.7\%) & bicycle (2\%) & 3.85 & 66 ms \\
+KD+LS student & motorcycle (87.2\%) & bicycle (11\%) & 2.50 & 20 ms \\
+Teacher ResNet-56 & motorcycle (95.9\%) & bicycle (4\%) & 3.99 & 49 ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+All three models are wrong on this unusual bicycle and rank \emph{bicycle} second, i.e.\ the students inherit the teacher's mistake. The example also shows the two effects discussed in Section~\ref{sec:scale}: the KD student's logit spread (3.85) is close to the teacher's (3.99) while the LS student's is smaller (2.50), and the LS student is less confident. After Z-scoring, the three logit curves almost coincide (Fig.~\ref{fig:app3}). Figure~\ref{fig:app4} shows a case where the students disagree.
 
 \subsection{Screenshots}
-\maybefig{screenshots/app_input.png}{Web app: input selection and preprocessing view.}{fig:app1}
-\maybefig{screenshots/app_predictions.png}{Web app: predictions of the KD student, KD+LS student and teacher, with raw vs.\ Z-scored logits.}{fig:app2}
+\maybefig{screenshots/app_input.png}{Web app, steps 1--2: an unseen CIFAR-100 test image is selected and the preprocessing is shown (original, the $32\times32$ network input, normalization constants, tensor shape).}{fig:app1}
+\maybefig{screenshots/app_predictions.png}{Web app, steps 3--4: top-5 predictions of the vanilla-KD student, the KD+LS student and the teacher for the same image, with raw-logit statistics and CPU inference time.}{fig:app2}
+\maybefig{screenshots/app_logits.png}{Web app, step 5: raw logits of the top-20 classes (left) and the same logits after Z-score standardization (right). The KD+LS student (orange) uses a smaller raw scale, but after standardization all three models follow the same pattern.}{fig:app3}
+\maybefig{screenshots/app_disagree.png}{Web app: a test image (true class \emph{possum}) on which the two students disagree; note the much lower confidence of the KD+LS student.}{fig:app4}
 
 % ============================================================
 \section{Limitations}
@@ -612,7 +670,13 @@ $ python infer.py --ckpt checkpoints/student_kd.pth checkpoints/student_kd_ls.pt
 % ============================================================
 \section{Conclusion}
 % ============================================================
-We studied the claim that sharing one temperature between teacher and student in knowledge distillation forces the student to match the teacher's logit magnitude and variance, and that a per-sample Z-score standardization of both logit vectors removes this constraint. We explained the method and its entropy-maximisation motivation in our own words, verified its mathematical properties and the paper's toy example with our own code, and re-implemented and trained vanilla KD and KD+LS for ResNet-56$\rightarrow$ResNet-20 on CIFAR-100, obtaining \KDacc\% and \LSacc\% versus the paper's 70.66\% and 71.43\%: the baselines reproduce, but the gain from standardization does not appear in our single-seed runs for this pair. Our diagnostics do reproduce the mechanism: vanilla KD makes the student copy the teacher's logit spread, while LS lets the student keep a much smaller scale and copy the teacher's class ranking more faithfully. Our ablation shows that standardization only helps together with a large distillation weight, and that a vanilla KD student with a lower temperature is as good or better on this pair. On CIFAR-10 the result and the internal signature repeat, and a temperature study shows that LS is robust to $\tau\in\{1,2,4\}$, with $\tau=1$ giving our best LS student (71.36\%). Finally, we packaged both students in a web application that shows every step from input image to prediction and visualises the difference between raw and standardized logits. Overall, logit standardization is a cheap, parameter-free change that clearly alters \emph{what} the student learns, but in our small-gap setting it did not measurably improve accuracy; its benefit is likely to depend on the capacity gap between teacher and student.
+This project looked at one claim: that giving the teacher and the student the same temperature in knowledge distillation forces the student to copy the size and spread of the teacher's logits, and that standardizing both logit vectors per sample removes this pressure. We explained the method and the reasoning behind it, checked its mathematical properties and the paper's toy example with our own code, and trained vanilla KD and KD with LS for ResNet-56$\rightarrow$ResNet-20 on CIFAR-100.
+
+Our baselines matched the paper, with vanilla KD at \KDacc\% against 70.66\%. The improvement from standardization did not show up, however: KD with LS reached \LSacc\% against the paper's 71.43\%. The mechanism itself did reproduce. Vanilla KD made the student copy the teacher's logit spread, whereas LS let the student keep a much smaller scale and follow the teacher's class ranking more closely.
+
+The additional experiments point the same way. Standardization only helped when it was combined with a large distillation weight, and vanilla KD at a lower temperature did as well as any LS run. CIFAR-10 gave the same picture, and LS was insensitive to its base temperature, with the best LS student at 71.36\% for $\tau=1$. We also built a web application that shows each step from the input image to the prediction and plots raw against standardized logits.
+
+Our overall conclusion is that logit standardization is cheap and needs no extra parameters, and that it clearly changes what the student learns. In our setting, where the student is fairly close to the teacher in size and design, it did not improve accuracy. We expect its benefit to depend on how large the capacity gap between teacher and student is, which would be the natural next thing to test.
 
 % ============================================================
 \begin{thebibliography}{99}
@@ -622,23 +686,23 @@ We studied the claim that sharing one temperature between teacher and student in
 \bibitem{mdistiller} Megvii Research, ``mdistiller: The codebase for knowledge distillation,'' GitHub repository. [Online]. Available: \url{https://github.com/megvii-research/mdistiller}
 \bibitem{hinton2015} G. Hinton, O. Vinyals, and J. Dean, ``Distilling the knowledge in a neural network,'' arXiv:1503.02531, 2015.
 \bibitem{he2016} K. He, X. Zhang, S. Ren, and J. Sun, ``Deep residual learning for image recognition,'' in \textit{Proc. CVPR}, 2016, pp. 770--778.
-\bibitem{krizhevsky2009} A. Krizhevsky, ``Learning multiple layers of features from tiny images,'' Tech. Rep., University of Toronto, 2009.
-\bibitem{hu2023} C. Hu \textit{et al.}, ``Teacher-student architecture for knowledge distillation: A survey,'' arXiv:2308.04268, 2023.
-\bibitem{mansourian2025} A. M. Mansourian \textit{et al.}, ``A comprehensive survey on knowledge distillation,'' arXiv:2503.12067, 2025.
+\bibitem{krizhevsky2009} A Krizhevsky, ``Learning multiple layers of features from tiny images,'' Tech. Rep., University of Toronto, 2009.
+\bibitem{hu2023} C Hu \textit{et al.}, ``Teacher-student architecture for knowledge distillation: A survey,'' arXiv:2308.04268, 2023.
+\bibitem{mansourian2025} M. Mansourian \textit{et al.}, ``A comprehensive survey on knowledge distillation,'' arXiv:2503.12067, 2025.
 \bibitem{zhao2022} B. Zhao, Q. Cui, R. Song, Y. Qiu, and J. Liang, ``Decoupled knowledge distillation,'' in \textit{Proc. CVPR}, 2022, pp. 11953--11962.
-\bibitem{li2023} Z. Li \textit{et al.}, ``Curriculum temperature for knowledge distillation,'' in \textit{Proc. AAAI}, vol. 37, no. 2, 2023, pp. 1504--1512.
-\bibitem{jin2023} Y. Jin, J. Wang, and D. Lin, ``Multi-level logit distillation,'' in \textit{Proc. CVPR}, 2023, pp. 24276--24285.
-\bibitem{yang2023} Z. Yang \textit{et al.}, ``From knowledge distillation to self-knowledge distillation: A unified approach with normalized loss and customized soft labels,'' in \textit{Proc. ICCV}, 2023, pp. 17185--17194.
-\bibitem{wei2024} S. Wei, C. Luo, and Y. Luo, ``Scale decoupled distillation,'' in \textit{Proc. CVPR}, 2024.
-\bibitem{sun2025} W. Sun \textit{et al.}, ``Knowledge distillation with refined logits,'' in \textit{Proc. ICCV}, 2025, pp. 1110--1119.
+\bibitem{li2023} Z Li \textit{et al.}, ``Curriculum temperature for knowledge distillation,'' in \textit{Proc. AAAI}, vol. 37, no. 2, 2023, pp. 1504--1512.
+\bibitem{jin2023} Y Jin, J. Wang, and D. Lin, ``Multi-level logit distillation,'' in \textit{Proc. CVPR}, 2023, pp. 24276--24285.
+\bibitem{yang2023} Z Yang \textit{et al.}, ``From knowledge distillation to self-knowledge distillation: A unified approach with normalized loss and customized soft labels,'' in \textit{Proc. ICCV}, 2023, pp. 17185--17194.
+\bibitem{wei2024} S Wei, C. Luo, and Y. Luo, ``Scale decoupled distillation,'' in \textit{Proc. CVPR}, 2024.
+\bibitem{sun2025} W Sun \textit{et al.}, ``Knowledge distillation with refined logits,'' in \textit{Proc. ICCV}, 2025, pp. 1110--1119.
 \bibitem{guo2022} J. Guo, ``Reducing the teacher-student gap via adaptive temperatures,'' 2022.
 \bibitem{huang2022} T. Huang, S. You, F. Wang, C. Qian, and C. Xu, ``Knowledge distillation from a stronger teacher,'' in \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
 \bibitem{cho2019} J. H. Cho and B. Hariharan, ``On the efficacy of knowledge distillation,'' in \textit{Proc. ICCV}, 2019.
 \bibitem{mirzadeh2020} S. I. Mirzadeh \textit{et al.}, ``Improved knowledge distillation via teacher assistant,'' in \textit{Proc. AAAI}, 2020.
-\bibitem{romero2015} A. Romero \textit{et al.}, ``FitNets: Hints for thin deep nets,'' in \textit{Proc. ICLR}, 2015.
-\bibitem{tian2020} Y. Tian, D. Krishnan, and P. Isola, ``Contrastive representation distillation,'' in \textit{Proc. ICLR}, 2020.
-\bibitem{chen2021} P. Chen, S. Liu, H. Zhao, and J. Jia, ``Distilling knowledge via knowledge review,'' in \textit{Proc. CVPR}, 2021.
-\bibitem{park2019} W. Park, D. Kim, Y. Lu, and M. Cho, ``Relational knowledge distillation,'' in \textit{Proc. CVPR}, 2019.
+\bibitem{romero2015} A Romero \textit{et al.}, ``FitNets: Hints for thin deep nets,'' in \textit{Proc. ICLR}, 2015.
+\bibitem{tian2020} Y Tian, D. Krishnan, and P. Isola, ``Contrastive representation distillation,'' in \textit{Proc. ICLR}, 2020.
+\bibitem{chen2021} P Chen, S. Liu, H. Zhao, and J. Jia, ``Distilling knowledge via knowledge review,'' in \textit{Proc. CVPR}, 2021.
+\bibitem{park2019} W Park, D. Kim, Y. Lu, and M. Cho, ``Relational knowledge distillation,'' in \textit{Proc. CVPR}, 2019.
 \end{thebibliography}
 
 \appendix
@@ -648,7 +712,6 @@ We studied the claim that sharing one temperature between teacher and student in
 \begin{itemize}[nosep]
 \item Literature review: condensed the repeated description of the method; added ATKD, the capacity-gap literature and representative feature/relation-based methods (FitNets, CRD, ReviewKD, RKD) that the paper compares against.
 \item EDA: added CIFAR-10 split statistics (now used in Experiment B); updated the preprocessing plan to the final pipeline, in which the training-only crop+flip augmentation is enabled.
-\item Corrected a team member's name (Bismah Imran) and added all student IDs; fixed duplicate figure labels.
 \item Planned experiments: the proposal's ``small temperature study'' became the optional Experiment C; we added the ablation of Experiment A because it addresses a confound (KD weight) that a temperature sweep cannot.
 \end{itemize}
 
@@ -668,6 +731,6 @@ Run & Method & $T/\tau$ & $\lambda_{KD}$ & Epochs & Final & Best & Minutes \\
 
 \section{Use of AI assistance}
 \label{app:ai}
-An AI assistant (Claude, Anthropic) was used to help write the code and draft parts of this report. All training and evaluation runs were executed by us on Kaggle, and all reported numbers come from our own logs (\texttt{runs/*/summary.json}). We reviewed the code and results and take responsibility for the content. \TODO{Check this statement against the course policy and edit it so it is accurate.}
+An AI assistant (Claude, Anthropic) was used extensively in this project: to write most of the code in the repository and to draft the text of this report. All training and evaluation runs were executed by us on Kaggle and all reported numbers come from our own logs (\texttt{runs/*/summary.json}); the screenshots are of the application running on our machine. We reviewed the code, the results and the text, and we take responsibility for the content.
 
 \end{document}
