@@ -1,6 +1,6 @@
 # Logit Standardization in Knowledge Distillation — reproduction, experiments & deployment
 
-CSE-602 Machine Learning project (Fall 2026) — Abiha Jawaid (36395), Bismah Imran (36222), Zainab Asif (36232)
+CSE-602 Machine Learning project (Fall 2026) — Abiha Jawaid (36395), Bismah Imam (36222), Zainab Asif (36232)
 
 Paper: S. Sun, W. Ren, J. Li, R. Wang, X. Cao, *Logit Standardization in Knowledge Distillation*, CVPR 2024.
 
